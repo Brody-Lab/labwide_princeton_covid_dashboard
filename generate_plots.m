@@ -12,23 +12,43 @@ function generate_plots(varargin)
         return
     end
     figure('Position',P.figure_position);
-    colors = distinguishable_colors(length(csv_files));
-    for i=1:length(csv_files)
-        [~,names{i},~] = fileparts(csv_files{i});         
-        T{i} = read_covid_dashboard_table(csv_files{i});
-        dates{i} =  T{i}.WeekEnding;
-        n_tests{i} = T{i}.Tests;
-        n_pos{i} = T{i}.PositiveCases;
+    colors = distinguishable_colors(length(csv_files)+1);
+    for i=1:length(csv_files)+1
+        if i>length(csv_files)
+            if ( length(unique(cat(1,dates{:}))) == length(dates{1}) ) && numel(unique(cellfun(@height,T)))==1
+                dates{i} = dates{1};
+                n_tests{i} = sum([n_tests{:}],2);
+                n_pos{i} = sum([n_pos{:}],2);     
+                names{i} = 'Combined';
+            else
+                warning('Dates are not the same in all tables. Will not combine them.');
+                continue
+            end
+        else
+            [~,names{i},~] = fileparts(csv_files{i});         
+            T{i} = read_covid_dashboard_table(csv_files{i});
+            dates{i} =  T{i}.WeekEnding;
+            n_tests{i} = T{i}.Tests;
+            n_pos{i} = T{i}.PositiveCases;
+        end
         if params.errorbar
             [~,l,u] = bino_confidence(n_tests{i},n_pos{i});
             l(isnan(l))=0;
             h(i) = shadedErrorBar(datenum(dates{i}),100*n_pos{i}./n_tests{i},100*[u l]');hold on;
             h(i).mainLine.Color = colors(i,:);
-            h(i).maineLine.LineWidth=2;
+            h(i).mainLine.LineWidth=2;
+            h(i).mainLine.Marker='.';
+            h(i).mainLine.MarkerSize=20;
             h(i).patch.FaceAlpha = 0.5;
             h(i).patch.FaceColor = colors(i,:);
+            if i>length(csv_files)
+                h(i).mainLine.LineStyle=':';
+            end
         else
-            h(i) = plot(datenum(dates{i}),100*n_pos{i}./n_tests{i},'color',colors(i,:),'LineWidth',2);hold on;            
+            h(i) = plot(datenum(dates{i}),100*n_pos{i}./n_tests{i},'color',colors(i,:),'LineWidth',2,'Marker','.','MarkerSize',20);hold on;   
+            if i>length(csv_files)
+                h(i).LineStyle=':';
+            end
         end
     end
     if params.errorbar
